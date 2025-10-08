@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import postRoutes from './routes/postRoutes.js';
-import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import connectDB from './db.js';
 
@@ -29,7 +28,6 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/auth', authRoutes);
-app.use('/users', userRoutes);
 app.use('/posts', postRoutes);
 
 // Connect to MongoDB, then start the server
