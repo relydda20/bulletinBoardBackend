@@ -35,7 +35,6 @@ const userSchema = new Schema(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
       // minLength: [6, "Password must be at least 6 characters long"],
     },
     googleId: {
@@ -43,7 +42,7 @@ const userSchema = new Schema(
     },
     bio: {
       type: String,
-      maxLength: [200, "Bio cannot exceed 200 characters"],
+      // maxLength: [200, "Bio cannot exceed 200 characters"],
       trim: true,
     },
   },

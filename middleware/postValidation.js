@@ -1,46 +1,35 @@
-import { body } from 'express-validator';
+import { body } from "express-validator";
 
 export const createPostValidation = [
-  body('title')
+  body("title")
     .notEmpty()
-    .withMessage('Title is required')
+    .withMessage("Title is required")
     .isLength({ min: 3 })
-    .withMessage('Title must be at least 3 characters long')
+    .withMessage("Title must be at least 3 characters long")
     .trim(),
-  
-  body('content')
+
+  body("content")
     .notEmpty()
-    .withMessage('Content is required')
+    .withMessage("Content is required")
     .isLength({ min: 10 })
-    .withMessage('Content must be at least 10 characters long')
+    .withMessage("Content must be at least 10 characters long")
     .trim(),
-  
-  body('author')
-    .notEmpty()
-    .withMessage('Author is required')
-    .trim()
 ];
 
 export const updatePostValidation = [
-  body('title')
+  body("title")
     .optional()
     .notEmpty()
-    .withMessage('Title cannot be empty')
+    .withMessage("Title cannot be empty")
     .isLength({ min: 3 })
-    .withMessage('Title must be at least 3 characters long')
+    .withMessage("Title must be at least 3 characters long")
     .trim(),
-  
-  body('content')
+
+  body("content")
     .optional()
     .notEmpty()
-    .withMessage('Content cannot be empty')
+    .withMessage("Content cannot be empty")
     .isLength({ min: 10 })
-    .withMessage('Content must be at least 10 characters long')
+    .withMessage("Content must be at least 10 characters long")
     .trim(),
-  
-  body('author')
-    .optional()
-    .notEmpty()
-    .withMessage('Author cannot be empty')
-    .trim()
 ];

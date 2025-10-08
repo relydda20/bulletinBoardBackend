@@ -1,10 +1,10 @@
-import User from '../models/User.js';
+import User from "../models/User.js";
 import {
   generateAccessToken,
   generateRefreshToken,
-  verifyRefreshToken
-} from '../utils/jwtUtils.js';
-import bcrypt from 'bcryptjs';
+  verifyRefreshToken,
+} from "../utils/jwtUtils.js";
+import bcrypt from "bcryptjs";
 
 export const authController = {
   // Register new user
@@ -13,49 +13,50 @@ export const authController = {
       const { email, username, password } = req.body;
 
       // Check if user already exists
-      const existingUser = await User.findOne({ 
-        $or: [{ email }, { username }] 
+      const existingUser = await User.findOne({
+        $or: [{ email }, { username }],
       });
 
       if (existingUser) {
         return res.status(409).json({
           success: false,
-          message: 'User with this email or username already exists'
+          message: "User with this email or username already exists",
         });
       }
+      const hashed = await bcrypt.hash(password, 10);
 
       // Create new user (password will be hashed by pre-save middleware)
-      const user = await User.create({ 
-        email, 
-        username, 
-        password 
+      const user = await User.create({
+        email,
+        username,
+        password: hashed,
       });
 
       // Generate tokens
       const accessToken = generateAccessToken({
         id: user.shortId,
         email: user.email,
-        role: user.role
+        role: user.role,
       });
 
       const refreshToken = generateRefreshToken({
-        id: user.shortId
+        id: user.shortId,
       });
 
       res.status(201).json({
         success: true,
-        message: 'User registered successfully',
+        message: "User registered successfully",
         data: {
           user,
           accessToken,
-          refreshToken
-        }
+          refreshToken,
+        },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error registering user',
-        error: error.message
+        message: "Error registering user",
+        error: error.message,
       });
     }
   },
@@ -66,24 +67,24 @@ export const authController = {
       const { email, password } = req.body;
 
       // Find user
-    const user = await User.findOne({ email }).select('+password');
-    console.log('User found during login:', user);
+      const user = await User.findOne({ email }).select("+password");
+      // console.log("User found during login:", user);
 
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: "Invalid email or password",
         });
       }
 
       // Verify password using User model method
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log('Password valid:', isPasswordValid);
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      // console.log("Password valid:", isPasswordValid);
 
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          message: "Invalid email or password",
         });
       }
 
@@ -91,27 +92,27 @@ export const authController = {
       const accessToken = generateAccessToken({
         id: user.shortId,
         email: user.email,
-        role: user.role
+        role: user.role,
       });
 
       const refreshToken = generateRefreshToken({
-        id: user.shortId
+        id: user.shortId,
       });
 
       res.status(200).json({
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         data: {
           user: user.toJSON(),
           accessToken,
-          refreshToken
-        }
+          refreshToken,
+        },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error logging in',
-        error: error.message
+        message: "Error logging in",
+        error: error.message,
       });
     }
   },
@@ -124,7 +125,7 @@ export const authController = {
       if (!refreshToken) {
         return res.status(400).json({
           success: false,
-          message: 'Refresh token is required'
+          message: "Refresh token is required",
         });
       }
 
@@ -134,7 +135,7 @@ export const authController = {
       if (!decoded) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid or expired refresh token'
+          message: "Invalid or expired refresh token",
         });
       }
 
@@ -144,7 +145,7 @@ export const authController = {
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User not found'
+          message: "User not found",
         });
       }
 
@@ -152,21 +153,21 @@ export const authController = {
       const newAccessToken = generateAccessToken({
         id: user.shortId,
         email: user.email,
-        role: user.role
+        role: user.role,
       });
 
       res.status(200).json({
         success: true,
-        message: 'Token refreshed successfully',
+        message: "Token refreshed successfully",
         data: {
-          accessToken: newAccessToken
-        }
+          accessToken: newAccessToken,
+        },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error refreshing token',
-        error: error.message
+        message: "Error refreshing token",
+        error: error.message,
       });
     }
   },
@@ -179,19 +180,19 @@ export const authController = {
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'User not found'
+          message: "User not found",
         });
       }
 
       res.status(200).json({
         success: true,
-        data: { user }
+        data: { user },
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error fetching profile',
-        error: error.message
+        message: "Error fetching profile",
+        error: error.message,
       });
     }
   },
@@ -202,17 +203,17 @@ export const authController = {
       // In production, you might want to:
       // - Blacklist the token in Redis
       // - Remove refresh token from database
-      
+
       res.status(200).json({
         success: true,
-        message: 'Logout successful. Please remove tokens from client.'
+        message: "Logout successful. Please remove tokens from client.",
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error logging out',
-        error: error.message
+        message: "Error logging out",
+        error: error.message,
       });
     }
-  }
+  },
 };
