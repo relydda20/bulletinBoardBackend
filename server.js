@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import postRoutes from './routes/postRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import connectDB from './db.js';
 
 dotenv.config();
@@ -14,17 +16,20 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/', (req, res) => {
-    res.send('Welcome to the Bulletin Board API');
+    res.json({
+        success: true,
+        message: 'Welcome to the Bulletin Board API',
+        endpoints: {
+            auth: '/auth',
+            users: '/users',
+            posts: '/posts'
+        }
+    });
 });
 
-app.post('/login', (req, res) => {
-    res.send('Login Page');
-});
-
-app.post('/register', (req, res) => {
-    res.send('Register Page');
-});
-
+// API Routes
+app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
 app.use('/posts', postRoutes);
 
 // Connect to MongoDB, then start the server
