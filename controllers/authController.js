@@ -1,49 +1,44 @@
+// src/controllers/authController.js
+
 import User from "../models/User.js";
+import bcrypt from "bcryptjs";
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
 } from "../utils/jwtUtils.js";
-import bcrypt from "bcryptjs";
 
 export const authController = {
-  // Register new user
+  // Register new user (email + username + password)
   register: async (req, res) => {
     try {
       const { email, username, password } = req.body;
 
-      // Check if user already exists
+      // Check for duplicate email or username
       const existingUser = await User.findOne({
         $or: [{ email }, { username }],
       });
-
       if (existingUser) {
         return res.status(409).json({
           success: false,
           message: "User with this email or username already exists",
         });
       }
-      const hashed = await bcrypt.hash(password, 10);
 
-      // Create new user (password will be hashed by pre-save middleware)
+      // Hash password and create user
+      const hashed = await bcrypt.hash(password, 10);
       const user = await User.create({
         email,
         username,
         password: hashed,
       });
 
-      // Generate tokens
-      const accessToken = generateAccessToken({
-        id: user.shortId,
-        email: user.email,
-        role: user.role,
-      });
+      // Token payload uses public-friendly shortId
+      const payload = { id: user.shortId, email: user.email };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken({ id: user.shortId });
 
-      const refreshToken = generateRefreshToken({
-        id: user.shortId,
-      });
-
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: "User registered successfully",
         data: {
@@ -53,7 +48,7 @@ export const authController = {
         },
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Error registering user",
         error: error.message,
@@ -61,15 +56,13 @@ export const authController = {
     }
   },
 
-  // Login user
+  // Login user (email + password)
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
 
-      // Find user
+      // Find user and include password field for comparison
       const user = await User.findOne({ email }).select("+password");
-      // console.log("User found during login:", user);
-
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -77,10 +70,8 @@ export const authController = {
         });
       }
 
-      // Verify password using User model method
+      // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
-      // console.log("Password valid:", isPasswordValid);
-
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
@@ -88,18 +79,12 @@ export const authController = {
         });
       }
 
-      // Generate tokens
-      const accessToken = generateAccessToken({
-        id: user.shortId,
-        email: user.email,
-        role: user.role,
-      });
+      // Issue tokens with unified payload
+      const payload = { id: user.shortId, email: user.email };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken({ id: user.shortId });
 
-      const refreshToken = generateRefreshToken({
-        id: user.shortId,
-      });
-
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: "Login successful",
         data: {
@@ -109,7 +94,7 @@ export const authController = {
         },
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Error logging in",
         error: error.message,
@@ -117,21 +102,19 @@ export const authController = {
     }
   },
 
-  // Refresh access token
+  // Refresh access token using refresh token
   refreshToken: async (req, res) => {
     try {
-      const { refreshToken } = req.body;
+      const { refreshToken: clientRefreshToken } = req.body;
 
-      if (!refreshToken) {
+      if (!clientRefreshToken) {
         return res.status(400).json({
           success: false,
           message: "Refresh token is required",
         });
       }
 
-      // Verify refresh token
-      const decoded = verifyRefreshToken(refreshToken);
-
+      const decoded = verifyRefreshToken(clientRefreshToken);
       if (!decoded) {
         return res.status(401).json({
           success: false,
@@ -139,9 +122,7 @@ export const authController = {
         });
       }
 
-      // Get user
       const user = await User.findOne({ shortId: decoded.id });
-
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -149,14 +130,12 @@ export const authController = {
         });
       }
 
-      // Generate new access token
       const newAccessToken = generateAccessToken({
         id: user.shortId,
         email: user.email,
-        role: user.role,
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: "Token refreshed successfully",
         data: {
@@ -164,7 +143,7 @@ export const authController = {
         },
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Error refreshing token",
         error: error.message,
@@ -172,11 +151,10 @@ export const authController = {
     }
   },
 
-  // Get current user profile
+  // Get current user profile (requires auth middleware to set req.user)
   getProfile: async (req, res) => {
     try {
       const user = await User.findOne({ shortId: req.user.id });
-
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -184,12 +162,12 @@ export const authController = {
         });
       }
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: { user },
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Error fetching profile",
         error: error.message,
@@ -197,19 +175,16 @@ export const authController = {
     }
   },
 
-  // Logout (client should remove tokens)
-  logout: async (req, res) => {
+  // Logout (client-side token removal; server-side revoke optional)
+  logout: async (_req, res) => {
     try {
-      // In production, you might want to:
-      // - Blacklist the token in Redis
-      // - Remove refresh token from database
-
-      res.status(200).json({
+      // Optional: blacklist tokens in Redis / remove persisted refresh tokens
+      return res.status(200).json({
         success: true,
         message: "Logout successful. Please remove tokens from client.",
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: "Error logging out",
         error: error.message,
