@@ -191,4 +191,16 @@ export const authController = {
       });
     }
   },
+  googleCallback: async (req, res) => {
+    try {
+      const payload = { id: req.user.id, email: req.user.email };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken({ id: req.user.id });
+
+      res.json({ accessToken, refreshToken, shortId: req.user.id });
+    } catch (error) {
+      console.error("Error generating tokens:", error);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  },
 };
