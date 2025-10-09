@@ -3,6 +3,7 @@ import cors from "cors";
 import passport from "./config/passport.js";
 import postRoutes from "./routes/postRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
@@ -28,5 +29,6 @@ app.get("/", (req, res) => {
 // API Routes
 app.use("/auth", authRoutes);
 app.use("/posts", postRoutes);
+app.use("/users", userRoutes);
 
 export default app;

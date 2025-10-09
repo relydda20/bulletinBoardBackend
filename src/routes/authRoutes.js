@@ -3,7 +3,7 @@ import { authController } from "../controllers/authController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import passport from "../config/passport.js";
 
-const router = Router();
+export const router = Router();
 
 // Public routes
 router.post("/register", authController.register);
