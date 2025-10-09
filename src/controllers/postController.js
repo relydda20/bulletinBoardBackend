@@ -27,6 +27,8 @@ const postController = {
       const { shortId } = req.params;
       const post = await Post.findOne({ shortId });
 
+      await post.populate("author", "username email");
+
       if (!post) {
         return res.status(404).json({
           success: false,
