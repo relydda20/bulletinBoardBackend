@@ -2,7 +2,7 @@ import { get } from "mongoose";
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Comment from "../models/Comment.js";
-
+import shortId from "../models/types/shortid.js";
 const userController = {
   getUsers: async (req, res) => {
     try {
@@ -146,13 +146,25 @@ const userController = {
         });
       }
 
-      const posts = await Post.find({ author: user.shortId });
+      // Use user._id (ObjectId) not user.shortId (string)
+      const posts = await Post.find({ author: user._id })
+        .populate('author', 'shortId username displayName')
+        .sort({ createdAt: -1 });
 
       return res.status(200).json({
         success: true,
-        data: { posts },
+        message: "User posts retrieved successfully",
+        data: { 
+          posts,
+          count: posts.length,
+          user: {
+            shortId: user.shortId,
+            username: user.username
+          }
+        },
       });
     } catch (error) {
+      console.error('Get user posts error:', error);
       return res.status(500).json({
         success: false,
         message: "Error fetching user's posts",
@@ -171,13 +183,26 @@ const userController = {
         });
       }
 
-      const comments = await Comment.find({ author: user.shortId });
+      // Use user._id (ObjectId) not user.shortId (string)
+      const comments = await Comment.find({ author: user._id })
+        .populate('author', 'shortId username displayName')
+        .populate('post', 'shortId title')
+        .sort({ createdAt: -1 });
 
       return res.status(200).json({
         success: true,
-        data: { comments },
+        message: "User comments retrieved successfully",
+        data: { 
+          comments,
+          count: comments.length,
+          user: {
+            shortId: user.shortId,
+            username: user.username
+          }
+        },
       });
     } catch (error) {
+      console.error('Get user comments error:', error);
       return res.status(500).json({
         success: false,
         message: "Error fetching user's comments",
