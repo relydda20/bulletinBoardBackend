@@ -5,7 +5,7 @@ const postSchema = new Schema(
   {
     shortId: {
       type: String,
-      default: generateShortId, // Function reference, bukan call
+      default: generateShortId,
       unique: true,
       index: true,
     },
@@ -37,7 +37,7 @@ const postSchema = new Schema(
     // }],
   },
   {
-    timestamps: true, // Gunakan timestamps: true daripada manual timestamp
+    timestamps: true,
   }
 );
 
