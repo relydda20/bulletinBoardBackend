@@ -4,7 +4,7 @@ import { connectDB, setupGracefulShutdown } from "./src/config/db.js";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000; // Default to 3000 if PORT not set
 
 const startServer = async () => {
   try {
