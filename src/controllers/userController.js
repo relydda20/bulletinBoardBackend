@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Comment from "../models/Comment.js";
 import shortId from "../models/types/shortid.js";
+import { sendPasswordChangeConfirmation } from "../utils/sendEmail.js";
 const userController = {
   getUsers: async (req, res) => {
     try {
@@ -99,6 +100,14 @@ const userController = {
 
       user.password = newPassword;
       await user.save();
+
+      // Send password change confirmation email
+      try {
+        await sendPasswordChangeConfirmation(user.email, user.username);
+      } catch (emailError) {
+        console.error('Password change confirmation email error:', emailError);
+        // Don't fail the request if email fails
+      }
 
       return res.status(200).json({
         success: true,

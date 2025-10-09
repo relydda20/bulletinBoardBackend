@@ -4,6 +4,7 @@ import passport from "./config/passport.js";
 import postRoutes from "./routes/postRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import passwordResetRoutes from "./routes/passwordResetRoutes.js";
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.get("/", (req, res) => {
 
 // API Routes
 app.use("/auth", authRoutes);
+app.use("/auth", passwordResetRoutes);
 app.use("/posts", postRoutes);
 app.use("/users", userRoutes);
 
