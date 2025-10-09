@@ -16,7 +16,13 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed": "node scripts/seed.js",
+    "seed:fresh": "node src/scripts/seed.js --fresh",
+    "seed:clear": "node src/scripts/seed.js --clear",
+    "db:fresh": "node src/scripts/seed.js --fresh",
+    "db:seed": "node src/scripts/seed.js --seed",
+    "db:clear": "node src/scripts/seed.js --clear"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
