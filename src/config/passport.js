@@ -29,8 +29,9 @@ passport.use(
 
         if (!user) {
           // Generate base username from Google displayName or givenName
+          // only take first name or word before space
           const base = slugify(
-            profile.displayName || profile.name?.givenName || "user",
+            (profile.displayName || profile.name?.givenName)?.split(" ")[0],
             { lower: true, strict: true }
           );
 
