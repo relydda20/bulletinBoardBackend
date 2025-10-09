@@ -1,24 +1,23 @@
 // scripts/seed.js
 import mongoose from "mongoose";
-import dotenv from "dotenv";
+import "../../loadEnv.js";
 import {
   clearDatabase,
   seedDatabase,
   freshSeed,
 } from "../seeders/databaseSeeder.js";
 
-// Load environment variables
-dotenv.config();
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://localhost:27017/your_database";
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/your_database";
 
+console.log(MONGO_URI);
 /**
  * Connect to MongoDB
  */
 const connectDB = async () => {
   try {
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGO_URI);
     console.log("✅ Connected to MongoDB\n");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
