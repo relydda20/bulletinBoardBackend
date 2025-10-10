@@ -34,8 +34,19 @@ const postSchema = new Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// Virtual populate: pull comments linked to this post
+postSchema.virtual('comments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'post',
+  justOne: false,
+  options: { sort: { createdAt: -1 } }
+});
 
 // Indexes
 // postSchema.index({ shortId: 1 });
