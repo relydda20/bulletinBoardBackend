@@ -2,11 +2,7 @@
 
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-} from "../utils/jwtUtils.js";
+import {generateAccessToken, generateRefreshToken, verifyRefreshToken} from "../utils/jwtUtils.js";
 
 // Helper function to set token cookies
 const setTokenCookies = (res, accessToken, refreshToken) => {
@@ -94,9 +90,13 @@ export const authController = {
 
   login: async (req, res) => {
     try {
-      const {email, password} = req.body;
+      const {emailOrUsername, password} = req.body;
 
-      const user = await User.findOne({email}).select("+password");
+      // Try to find user by email OR username
+      const user = await User.findOne({
+        $or: [{email: emailOrUsername}, {username: emailOrUsername}],
+      }).select("+password");
+
       if (!user) {
         return res.status(401).json({
           success: false,
