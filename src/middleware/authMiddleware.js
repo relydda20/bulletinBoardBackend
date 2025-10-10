@@ -1,54 +1,63 @@
 import {verifyAccessToken} from "../utils/jwtUtils.js";
 import User from "../models/User.js";
 
-// Protect routes - verify JWT token
 export const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Get token from cookie instead of Authorization header
+    const token = req.cookies.accessToken;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return res.status(401).json({
         success: false,
         message: "No token provided. Please login.",
+        code: "NO_TOKEN",
       });
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = verifyAccessToken(token); // contains shortId as id and email
+    const decoded = verifyAccessToken(token);
 
     if (!decoded || !decoded.id) {
       return res.status(401).json({
         success: false,
         message: "Invalid or expired token. Please login again.",
+        code: "TOKEN_EXPIRED",
       });
     }
 
-    // Fetch full user to get both _id and shortId
     const user = await User.findOne({shortId: decoded.id});
     if (!user) {
       return res.status(401).json({
         success: false,
         message: "User not found",
+        code: "USER_NOT_FOUND",
       });
     }
 
-    // Attach both internal and public identifiers
     req.user = {
-      _id: user._id, // for internal MongoDB relations
-      id: user.shortId, // for public API responses
+      _id: user._id,
+      id: user.shortId,
       email: user.email,
     };
 
     next();
   } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+        code: "TOKEN_EXPIRED",
+      });
+    }
+
     return res.status(401).json({
       success: false,
       message: "Authentication failed",
       error: error.message,
+      code: "AUTH_FAILED",
     });
   }
 };
-// Check if logged-in user owns the resource
+
 export const checkOwnership = (model) => {
   return async (req, res, next) => {
     try {
@@ -62,7 +71,6 @@ export const checkOwnership = (model) => {
         });
       }
 
-      // Find the resource by shortId or _id
       const resource = await model.findOne({
         $or: [{shortId: identifier}, {_id: identifier}],
       });
@@ -74,7 +82,6 @@ export const checkOwnership = (model) => {
         });
       }
 
-      // Check if the logged-in user is the author/owner
       if (resource.author.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
@@ -82,7 +89,6 @@ export const checkOwnership = (model) => {
         });
       }
 
-      // Attach resource to request for use in controller
       req.resource = resource;
       next();
     } catch (error) {
@@ -94,7 +100,7 @@ export const checkOwnership = (model) => {
     }
   };
 };
-// Optional role-based authorization (future use)
+
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {

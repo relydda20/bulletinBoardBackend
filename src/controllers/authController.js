@@ -8,15 +8,51 @@ import {
   verifyRefreshToken,
 } from "../utils/jwtUtils.js";
 
+// Helper function to set token cookies
+const setTokenCookies = (res, accessToken, refreshToken) => {
+  // Access token cookie (15 minutes)
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 15 * 60 * 1000, // 15 minutes
+    path: "/",
+  });
+
+  // Refresh token cookie (7 days)
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: "/",
+  });
+};
+
+// Helper function to clear token cookies
+const clearTokenCookies = (res) => {
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+  });
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+  });
+};
+
 export const authController = {
-  // Register new user (email + username + password)
   register: async (req, res) => {
     try {
-      const { email, username, password } = req.body;
+      const {email, username, password} = req.body;
 
-      // Check for duplicate email or username
       const existingUser = await User.findOne({
-        $or: [{ email }, { username }],
+        $or: [{email}, {username}],
       });
       if (existingUser) {
         return res.status(409).json({
@@ -25,7 +61,6 @@ export const authController = {
         });
       }
 
-      // Hash password and create user
       const hashed = await bcrypt.hash(password, 10);
       const user = await User.create({
         email,
@@ -33,18 +68,19 @@ export const authController = {
         password: hashed,
       });
 
-      // Token payload uses public-friendly shortId
-      const payload = { id: user.shortId, email: user.email };
+      const payload = {id: user.shortId, email: user.email};
       const accessToken = generateAccessToken(payload);
-      const refreshToken = generateRefreshToken({ id: user.shortId });
+      const refreshToken = generateRefreshToken({id: user.shortId});
+
+      // Set cookies
+      setTokenCookies(res, accessToken, refreshToken);
 
       return res.status(201).json({
         success: true,
         message: "User registered successfully",
         data: {
           user,
-          accessToken,
-          refreshToken,
+          // Don't send tokens in response body anymore
         },
       });
     } catch (error) {
@@ -56,13 +92,11 @@ export const authController = {
     }
   },
 
-  // Login user (email + password)
   login: async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const {email, password} = req.body;
 
-      // Find user and include password field for comparison
-      const user = await User.findOne({ email }).select("+password");
+      const user = await User.findOne({email}).select("+password");
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -70,7 +104,6 @@ export const authController = {
         });
       }
 
-      // Verify password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return res.status(401).json({
@@ -79,18 +112,19 @@ export const authController = {
         });
       }
 
-      // Issue tokens with unified payload
-      const payload = { id: user.shortId, email: user.email };
+      const payload = {id: user.shortId, email: user.email};
       const accessToken = generateAccessToken(payload);
-      const refreshToken = generateRefreshToken({ id: user.shortId });
+      const refreshToken = generateRefreshToken({id: user.shortId});
+
+      // Set cookies
+      setTokenCookies(res, accessToken, refreshToken);
 
       return res.status(200).json({
         success: true,
         message: "Login successful",
         data: {
           user: user.toJSON(),
-          accessToken,
-          refreshToken,
+          // Don't send tokens in response body anymore
         },
       });
     } catch (error) {
@@ -102,59 +136,65 @@ export const authController = {
     }
   },
 
-  // Refresh access token using refresh token
   refreshToken: async (req, res) => {
     try {
-      const { refreshToken: clientRefreshToken } = req.body;
+      // Get refresh token from cookie instead of body
+      const clientRefreshToken = req.cookies.refreshToken;
 
       if (!clientRefreshToken) {
-        return res.status(400).json({
+        clearTokenCookies(res);
+        return res.status(401).json({
           success: false,
           message: "Refresh token is required",
+          requiresLogin: true,
         });
       }
 
       const decoded = verifyRefreshToken(clientRefreshToken);
       if (!decoded) {
+        clearTokenCookies(res);
         return res.status(401).json({
           success: false,
           message: "Invalid or expired refresh token",
+          requiresLogin: true,
         });
       }
 
-      const user = await User.findOne({ shortId: decoded.id });
+      const user = await User.findOne({shortId: decoded.id});
       if (!user) {
+        clearTokenCookies(res);
         return res.status(404).json({
           success: false,
           message: "User not found",
+          requiresLogin: true,
         });
       }
 
-      const newAccessToken = generateAccessToken({
-        id: user.shortId,
-        email: user.email,
-      });
+      const payload = {id: user.shortId, email: user.email};
+      const newAccessToken = generateAccessToken(payload);
+      const newRefreshToken = generateRefreshToken({id: user.shortId});
+
+      // Set new cookies
+      setTokenCookies(res, newAccessToken, newRefreshToken);
 
       return res.status(200).json({
         success: true,
         message: "Token refreshed successfully",
-        data: {
-          accessToken: newAccessToken,
-        },
       });
     } catch (error) {
+      clearTokenCookies(res);
       return res.status(500).json({
         success: false,
         message: "Error refreshing token",
         error: error.message,
+        requiresLogin: true,
       });
     }
   },
 
-  // Get current user profile (requires auth middleware to set req.user)
   getProfile: async (req, res) => {
     try {
-      const user = await User.findOne({ shortId: req.user.id });
+      const user = await User.findOne({shortId: req.user.id});
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -164,7 +204,7 @@ export const authController = {
 
       return res.status(200).json({
         success: true,
-        data: { user },
+        data: {user},
       });
     } catch (error) {
       return res.status(500).json({
@@ -175,13 +215,14 @@ export const authController = {
     }
   },
 
-  // Logout (client-side token removal; server-side revoke optional)
   logout: async (_req, res) => {
     try {
-      // Optional: blacklist tokens in Redis / remove persisted refresh tokens
+      // Clear cookies
+      clearTokenCookies(res);
+
       return res.status(200).json({
         success: true,
-        message: "Logout successful. Please remove tokens from client.",
+        message: "Logout successful",
       });
     } catch (error) {
       return res.status(500).json({
@@ -191,16 +232,23 @@ export const authController = {
       });
     }
   },
+
   googleCallback: async (req, res) => {
     try {
-      const payload = { id: req.user.id, email: req.user.email };
+      const payload = {id: req.user.id, email: req.user.email};
       const accessToken = generateAccessToken(payload);
-      const refreshToken = generateRefreshToken({ id: req.user.id });
+      const refreshToken = generateRefreshToken({id: req.user.id});
 
-      res.json({ accessToken, refreshToken, shortId: req.user.id });
+      // Set cookies
+      setTokenCookies(res, accessToken, refreshToken);
+
+      // Redirect to frontend with success
+      const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
+      res.redirect(`${frontendURL}/auth/callback?success=true`);
     } catch (error) {
       console.error("Error generating tokens:", error);
-      res.status(500).json({ error: "Authentication failed" });
+      const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
+      res.redirect(`${frontendURL}/auth/callback?error=authentication_failed`);
     }
   },
 };

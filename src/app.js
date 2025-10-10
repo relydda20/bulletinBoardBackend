@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import passport from "./config/passport.js";
 import postRoutes from "./routes/postRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -9,10 +10,23 @@ import passwordResetRoutes from "./routes/passwordResetRoutes.js";
 const app = express();
 
 // Middleware
-app.use(cors());
+// app.use(cors()); //
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true, // This is crucial for cookies
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+app.use(cookieParser()); // for parsing cookies
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+app.use(express.urlencoded({extended: true})); // for parsing application/x-www-form-urlencoded
 app.use(passport.initialize());
+
+// Add cookie parser BEFORE routes
+
+// Update CORS to allow credentials
 
 // Health check / root route
 app.get("/", (req, res) => {
