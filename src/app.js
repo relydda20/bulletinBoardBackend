@@ -9,12 +9,22 @@ import passwordResetRoutes from "./routes/passwordResetRoutes.js";
 
 const app = express();
 
+const allowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
+
 // Middleware
-// app.use(cors()); //
+// app.use(cors()); // Enable CORS for all origins - not recommended for production
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    credentials: true, // This is crucial for cookies
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        // allow requests with no origin (like mobile apps, curl, Postman)
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -23,10 +33,6 @@ app.use(cookieParser()); // for parsing cookies
 app.use(express.json());
 app.use(express.urlencoded({extended: true})); // for parsing application/x-www-form-urlencoded
 app.use(passport.initialize());
-
-// Add cookie parser BEFORE routes
-
-// Update CORS to allow credentials
 
 // Health check / root route
 app.get("/", (req, res) => {
