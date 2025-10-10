@@ -1,16 +1,59 @@
 import Post from "../models/Post.js";
+import Comment from "../models/Comment.js";
 
 const postController = {
-  // GET all posts
+  // GET all posts with search and pagination
   getAllPosts: async (req, res) => {
     try {
-      const posts = await Post.find().sort({ createdAt: -1 });
+      const {search, page = 1, perPage = 15} = req.query;
+
+      // Build search query
+      let query = {};
+      if (search) {
+        query = {
+          $or: [
+            {title: {$regex: search, $options: "i"}},
+            {content: {$regex: search, $options: "i"}},
+          ],
+        };
+      }
+
+      // Calculate pagination
+      const limit = parseInt(perPage);
+      const skip = (parseInt(page) - 1) * limit;
+
+      // Get total count for pagination
+      const totalPosts = await Post.countDocuments(query);
+
+      // Fetch posts with author population
+      const posts = await Post.find(query)
+        .populate("author", "username email")
+        .sort({createdAt: -1})
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      // Get comment counts for each post
+      const postsWithCommentCount = await Promise.all(
+        posts.map(async (post) => {
+          const commentCount = await Comment.countDocuments({post: post._id});
+          return {
+            ...post,
+            commentCount,
+          };
+        })
+      );
 
       res.status(200).json({
         success: true,
         message: "Posts retrieved successfully",
-        count: posts.length,
-        data: posts,
+        data: postsWithCommentCount,
+        pagination: {
+          currentPage: parseInt(page),
+          perPage: limit,
+          totalPosts,
+          totalPages: Math.ceil(totalPosts / limit),
+        },
       });
     } catch (error) {
       res.status(500).json({
@@ -21,13 +64,13 @@ const postController = {
     }
   },
 
-  // GET single post by shortId
+  // GET single post by shortId with comments
   getPostByShortId: async (req, res) => {
     try {
-      const { shortId } = req.params;
-      const post = await Post.findOne({ shortId });
-
-      await post.populate("author", "username email");
+      const {shortId} = req.params;
+      const post = await Post.findOne({shortId})
+        .populate("author", "username email")
+        .lean();
 
       if (!post) {
         return res.status(404).json({
@@ -36,13 +79,25 @@ const postController = {
         });
       }
 
+      // Get all comments for this post
+      const comments = await Comment.find({post: post._id})
+        .populate("author", "username email")
+        .sort({createdAt: -1})
+        .lean();
+
+      // Get total comment count
+      const commentCount = comments.length;
+
       res.status(200).json({
         success: true,
         message: "Post retrieved successfully",
-        data: post,
+        data: {
+          ...post,
+          commentCount,
+          comments,
+        },
       });
     } catch (error) {
-      // Handle invalid MongoDB ObjectId
       if (error.name === "CastError") {
         return res.status(400).json({
           success: false,
@@ -63,10 +118,11 @@ const postController = {
     try {
       const postData = {
         ...req.body,
-        author: req.user._id, // Get author from authenticated user
+        author: req.user._id,
       };
 
       const newPost = await Post.create(postData);
+      await newPost.populate("author", "username email");
 
       res.status(201).json({
         success: true,
@@ -85,8 +141,8 @@ const postController = {
   // UPDATE post by shortId
   updatePost: async (req, res) => {
     try {
-      const { shortId } = req.params;
-      const post = await Post.findOne({ shortId });
+      const {shortId} = req.params;
+      const post = await Post.findOne({shortId});
 
       if (!post) {
         return res.status(404).json({
@@ -95,7 +151,6 @@ const postController = {
         });
       }
 
-      // Check if user owns the post
       if (post.author.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
@@ -103,10 +158,10 @@ const postController = {
         });
       }
 
-      const updatedPost = await Post.findOneAndUpdate({ shortId }, req.body, {
+      const updatedPost = await Post.findOneAndUpdate({shortId}, req.body, {
         new: true,
         runValidators: true,
-      });
+      }).populate("author", "username email");
 
       res.status(200).json({
         success: true,
@@ -125,20 +180,32 @@ const postController = {
   // DELETE post by shortId
   deletePost: async (req, res) => {
     try {
-      const { shortId } = req.params;
-      const deletedPost = await Post.findOneAndDelete({ shortId });
+      const {shortId} = req.params;
+      const post = await Post.findOne({shortId});
 
-      if (!deletedPost) {
+      if (!post) {
         return res.status(404).json({
           success: false,
           message: "Post not found",
         });
       }
 
+      // Optional: Check ownership
+      if (post.author.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only delete your own posts",
+        });
+      }
+
+      // Delete all comments associated with this post
+      await Comment.deleteMany({post: post._id});
+
+      await Post.findOneAndDelete({shortId});
+
       res.status(200).json({
         success: true,
-        message: "Post deleted successfully",
-        data: deletedPost,
+        message: "Post and associated comments deleted successfully",
       });
     } catch (error) {
       if (error.name === "CastError") {

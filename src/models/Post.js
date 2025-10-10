@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import {Schema, model} from "mongoose";
 import generateShortId from "./types/shortid.js";
 
 const postSchema = new Schema(
@@ -14,10 +14,6 @@ const postSchema = new Schema(
       ref: "User",
       required: [true, "Author is required"],
     },
-    // author: {
-    //   type: String,
-    //   required: [true, "Author is required"],
-    // },
     title: {
       type: String,
       required: [true, "Title is required"],
