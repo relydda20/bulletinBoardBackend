@@ -7,6 +7,8 @@ import {
   updatePostValidation,
 } from "../middleware/postValidation.js";
 import {authMiddleware, checkOwnership} from "../middleware/authMiddleware.js";
+import Post from "../models/Post.js";
+import Comment from "../models/Comment.js";
 
 const router = Router();
 
