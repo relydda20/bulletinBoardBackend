@@ -141,22 +141,8 @@ const postController = {
   // UPDATE post by shortId
   updatePost: async (req, res) => {
     try {
+      // req.resource is already validated by checkOwnership middleware
       const {shortId} = req.params;
-      const post = await Post.findOne({shortId});
-
-      if (!post) {
-        return res.status(404).json({
-          success: false,
-          message: "Post not found",
-        });
-      }
-
-      if (post.author.toString() !== req.user._id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: "You can only update your own posts",
-        });
-      }
 
       const updatedPost = await Post.findOneAndUpdate({shortId}, req.body, {
         new: true,
@@ -176,45 +162,22 @@ const postController = {
       });
     }
   },
-
   // DELETE post by shortId
   deletePost: async (req, res) => {
     try {
-      const {shortId} = req.params;
-      const post = await Post.findOne({shortId});
-
-      if (!post) {
-        return res.status(404).json({
-          success: false,
-          message: "Post not found",
-        });
-      }
-
-      // Optional: Check ownership
-      if (post.author.toString() !== req.user._id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: "You can only delete your own posts",
-        });
-      }
+      // req.resource is already validated by checkOwnership middleware
+      const post = req.resource;
 
       // Delete all comments associated with this post
       await Comment.deleteMany({post: post._id});
 
-      await Post.findOneAndDelete({shortId});
+      await Post.findOneAndDelete({shortId: post.shortId});
 
       res.status(200).json({
         success: true,
         message: "Post and associated comments deleted successfully",
       });
     } catch (error) {
-      if (error.name === "CastError") {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid post ID",
-        });
-      }
-
       res.status(500).json({
         success: false,
         message: "Server error",

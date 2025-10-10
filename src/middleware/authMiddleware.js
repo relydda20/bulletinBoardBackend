@@ -1,4 +1,4 @@
-import { verifyAccessToken } from "../utils/jwtUtils.js";
+import {verifyAccessToken} from "../utils/jwtUtils.js";
 import User from "../models/User.js";
 
 // Protect routes - verify JWT token
@@ -24,7 +24,7 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     // Fetch full user to get both _id and shortId
-    const user = await User.findOne({ shortId: decoded.id });
+    const user = await User.findOne({shortId: decoded.id});
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -47,6 +47,52 @@ export const authMiddleware = async (req, res, next) => {
       error: error.message,
     });
   }
+};
+// Check if logged-in user owns the resource
+export const checkOwnership = (model) => {
+  return async (req, res, next) => {
+    try {
+      const {shortId, id} = req.params;
+      const identifier = shortId || id;
+
+      if (!identifier) {
+        return res.status(400).json({
+          success: false,
+          message: "Resource identifier is required",
+        });
+      }
+
+      // Find the resource by shortId or _id
+      const resource = await model.findOne({
+        $or: [{shortId: identifier}, {_id: identifier}],
+      });
+
+      if (!resource) {
+        return res.status(404).json({
+          success: false,
+          message: `${model.modelName} not found`,
+        });
+      }
+
+      // Check if the logged-in user is the author/owner
+      if (resource.author.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: `You can only modify your own ${model.modelName.toLowerCase()}`,
+        });
+      }
+
+      // Attach resource to request for use in controller
+      req.resource = resource;
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error checking ownership",
+        error: error.message,
+      });
+    }
+  };
 };
 // Optional role-based authorization (future use)
 export const authorize = (...roles) => {
