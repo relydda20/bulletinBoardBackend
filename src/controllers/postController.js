@@ -27,7 +27,7 @@ const postController = {
 
       // Fetch posts with author population
       const posts = await Post.find(query)
-        .populate("author", "username email")
+        .populate("author", "username email shortId")
         .sort({createdAt: -1})
         .skip(skip)
         .limit(limit)
@@ -68,9 +68,7 @@ const postController = {
   getPostByShortId: async (req, res) => {
     try {
       const {shortId} = req.params;
-      const post = await Post.findOne({shortId})
-        .populate("author", "username email")
-        .lean();
+      const post = await Post.findOne({shortId}).populate("author", "username email").lean();
 
       if (!post) {
         return res.status(404).json({
@@ -81,7 +79,7 @@ const postController = {
 
       // Get all comments for this post
       const comments = await Comment.find({post: post._id})
-        .populate("author", "username email")
+        .populate("author", "username email shortId")
         .sort({createdAt: -1})
         .lean();
 
