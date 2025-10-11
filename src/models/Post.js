@@ -18,14 +18,12 @@ const postSchema = new Schema(
       type: String,
       required: [true, "Title is required"],
       trim: true,
-      minLength: [5, "Title must be at least 5 characters long"],
       maxLength: [100, "Title cannot exceed 100 characters"],
     },
     content: {
       type: String,
       required: [true, "Content is required"],
       trim: true,
-      minLength: [20, "Content must be at least 20 characters long"],
     },
     // tags: [{
     //   type: String,
@@ -34,18 +32,18 @@ const postSchema = new Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
+    toJSON: {virtuals: true},
+    toObject: {virtuals: true},
   }
 );
 
 // Virtual populate: pull comments linked to this post
-postSchema.virtual('comments', {
-  ref: 'Comment',
-  localField: '_id',
-  foreignField: 'post',
+postSchema.virtual("comments", {
+  ref: "Comment",
+  localField: "_id",
+  foreignField: "post",
   justOne: false,
-  options: { sort: { createdAt: -1 } }
+  options: {sort: {createdAt: -1}},
 });
 
 // Indexes
