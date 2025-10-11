@@ -233,9 +233,20 @@ export const authController = {
 
   googleCallback: async (req, res) => {
     try {
-      const payload = {id: req.user.id, email: req.user.email};
+      console.log("Google callback - User authenticated:", req.user?.email);
+
+      if (!req.user) {
+        console.error("No user in request after Google auth");
+        const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
+        return res.redirect(`${frontendURL}/auth/callback?error=no_user`);
+      }
+
+      // Use shortId which is what your User model has
+      const payload = {id: req.user.shortId, email: req.user.email};
       const accessToken = generateAccessToken(payload);
-      const refreshToken = generateRefreshToken({id: req.user.id});
+      const refreshToken = generateRefreshToken({id: req.user.shortId});
+
+      console.log("Generated tokens for user:", req.user.shortId);
 
       // Set cookies
       setTokenCookies(res, accessToken, refreshToken);
@@ -244,7 +255,7 @@ export const authController = {
       const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
       res.redirect(`${frontendURL}/auth/callback?success=true`);
     } catch (error) {
-      console.error("Error generating tokens:", error);
+      console.error("Error in googleCallback:", error);
       const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
       res.redirect(`${frontendURL}/auth/callback?error=authentication_failed`);
     }
