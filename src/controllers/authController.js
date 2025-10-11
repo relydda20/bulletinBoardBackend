@@ -5,43 +5,41 @@ import bcrypt from "bcryptjs";
 import {generateAccessToken, generateRefreshToken, verifyRefreshToken} from "../utils/jwtUtils.js";
 
 // Helper function to set token cookies
+// ----------------- Cookie Helpers -----------------
 const setTokenCookies = (res, accessToken, refreshToken) => {
-  // Access token cookie (15 minutes)
+  const isProd = process.env.NODE_ENV === "production";
+
+  const baseOptions = {
+    httpOnly: true,
+    secure: isProd, // must be true in prod (HTTPS)
+    sameSite: isProd ? "none" : "lax", // allow cross-site in prod, lax in dev
+    path: "/",
+  };
+
   res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000, // 15 minutes
-    path: "/",
+    ...baseOptions,
+    maxAge: 15 * 60 * 1000,
   });
 
-  // Refresh token cookie (7 days)
   res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: "/",
+    ...baseOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
-// Helper function to clear token cookies
 const clearTokenCookies = (res) => {
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-  });
+  const isProd = process.env.NODE_ENV === "production";
 
-  res.clearCookie("refreshToken", {
+  const baseOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProd, // must be true in prod (HTTPS)
+    sameSite: isProd ? "none" : "lax", // match what you used in setTokenCookies
     path: "/",
-  });
+  };
+
+  res.clearCookie("accessToken", baseOptions);
+  res.clearCookie("refreshToken", baseOptions);
 };
-
 export const authController = {
   register: async (req, res) => {
     try {

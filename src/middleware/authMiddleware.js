@@ -61,19 +61,17 @@ export const authMiddleware = async (req, res, next) => {
 export const checkOwnership = (model) => {
   return async (req, res, next) => {
     try {
-      const {shortId, id} = req.params;
-      const identifier = shortId || id;
+      const {shortId} = req.params;
 
-      if (!identifier) {
+      if (!shortId) {
         return res.status(400).json({
           success: false,
-          message: "Resource identifier is required",
+          message: "shortId is required",
         });
       }
 
-      const resource = await model.findOne({
-        $or: [{shortId: identifier}, {_id: identifier}],
-      });
+      // Always query by shortId (your public identifier)
+      const resource = await model.findOne({shortId});
 
       if (!resource) {
         return res.status(404).json({
@@ -82,6 +80,7 @@ export const checkOwnership = (model) => {
         });
       }
 
+      // Ownership check using the actual _id of the author
       if (resource.author.toString() !== req.user._id.toString()) {
         return res.status(403).json({
           success: false,
@@ -89,6 +88,7 @@ export const checkOwnership = (model) => {
         });
       }
 
+      // Attach the full resource (with _id) to the request
       req.resource = resource;
       next();
     } catch (error) {
