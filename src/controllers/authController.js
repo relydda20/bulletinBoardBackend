@@ -55,11 +55,10 @@ export const authController = {
         });
       }
 
-      const hashed = await bcrypt.hash(password, 10);
       const user = await User.create({
         email,
         username,
-        password: hashed,
+        password, // Pass the plain password
       });
 
       const payload = {id: user.shortId, email: user.email};
