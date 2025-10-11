@@ -48,11 +48,16 @@ router.post(
   commentController.createComment
 );
 
+router.get(
+  "/:shortId/comments/:commentId",
+  commentController.getCommentById
+);
+
 // PUT /posts/:shortId/comments/:commentId - Update own comment (auth only)
 router.put(
   "/:shortId/comments/:commentId",
   authMiddleware,
-  checkOwnership(Comment),
+  checkOwnership(Comment, "commentId"),
   commentController.updateComment
 );
 
@@ -60,7 +65,7 @@ router.put(
 router.delete(
   "/:shortId/comments/:commentId",
   authMiddleware,
-  checkOwnership(Comment),
+  checkOwnership(Comment, "commentId"),
   commentController.deleteComment
 );
 

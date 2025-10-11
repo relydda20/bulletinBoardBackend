@@ -58,20 +58,23 @@ export const authMiddleware = async (req, res, next) => {
   }
 };
 
-export const checkOwnership = (model) => {
+export const checkOwnership = (model, idParam = "shortId") => {
   return async (req, res, next) => {
     try {
-      const {shortId} = req.params;
+      const id = req.params[idParam];
 
-      if (!shortId) {
+      if (!id) {
         return res.status(400).json({
           success: false,
-          message: "shortId is required",
+          message: `${idParam} is required`,
         });
       }
 
-      // Always query by shortId (your public identifier)
-      const resource = await model.findOne({shortId});
+      // Build query based on the parameter name
+      const query = {};
+      query[idParam === 'commentId' ? '_id' : 'shortId'] = id;
+
+      const resource = await model.findOne(query);
 
       if (!resource) {
         return res.status(404).json({

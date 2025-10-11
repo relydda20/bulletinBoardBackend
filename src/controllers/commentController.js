@@ -117,6 +117,47 @@ const createComment = async (req, res) => {
   }
 };
 
+// GET /posts/:shortId/comments/:commentId - Get specific comment by ID
+const getCommentById = async (req, res) => {
+  try {
+    const { shortId, commentId } = req.params;
+
+    const post = await Post.findOne({ shortId });
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    if (!Types.ObjectId.isValid(commentId)) {
+      return res.status(400).json({ message: "Invalid comment id" });
+    }
+
+    const comment = await Comment.findOne({
+      _id: commentId,
+      post: post._id
+    })
+      .populate("author", "username")
+      .populate({
+        path: "parentComment",
+        populate: {
+          path: "author",
+          select: "username"
+        }
+      });
+
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    res.json({
+      success: true,
+      data: comment
+    });
+  } catch (error) {
+    console.error("Error fetching comment:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 // PUT /posts/:shortId/comments/:commentId - Update own comment (auth only)
 const updateComment = async (req, res) => {
   try {
@@ -143,12 +184,18 @@ const updateComment = async (req, res) => {
     const comment = await Comment.findOne({
       _id: commentId,
       post: post._id,
-      author: userId
     });
 
+    // Cek kepemilikan setelah menemukan comment
     if (!comment) {
       return res.status(404).json({ 
-        message: "Comment not found or you don't have permission to edit it" 
+        message: "Comment not found" 
+      });
+    }
+
+    if (comment.author.toString() !== userId) {
+      return res.status(403).json({
+        message: "You don't have permission to edit this comment"
       });
     }
 
@@ -198,12 +245,18 @@ const deleteComment = async (req, res) => {
     const comment = await Comment.findOne({
       _id: commentId,
       post: post._id,
-      author: userId
     });
 
+    // Cek kepemilikan setelah menemukan comment
     if (!comment) {
       return res.status(404).json({ 
-        message: "Comment not found or you don't have permission to delete it" 
+        message: "Comment not found" 
+      });
+    }
+
+    if (comment.author.toString() !== userId) {
+      return res.status(403).json({
+        message: "You don't have permission to delete this comment"
       });
     }
 
@@ -287,6 +340,7 @@ const replyToComment = async (req, res) => {
 
 export default {
   getCommentsByPost,
+  getCommentById,
   createComment,
   updateComment,
   deleteComment,
