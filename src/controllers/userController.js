@@ -1,9 +1,9 @@
-import { get } from "mongoose";
+import {get} from "mongoose";
 import User from "../models/User.js";
 import Post from "../models/Post.js";
 import Comment from "../models/Comment.js";
 import shortId from "../models/types/shortid.js";
-import { sendPasswordChangeConfirmation } from "../utils/sendEmail.js";
+import {sendPasswordChangeConfirmation} from "../utils/sendEmail.js";
 const userController = {
   getUsers: async (req, res) => {
     try {
@@ -12,21 +12,21 @@ const userController = {
         success: true,
         message: "Users retrieved successfully",
         data: users,
-        count: users.length
+        count: users.length,
       });
     } catch (error) {
-      console.error('Get users error:', error);
+      console.error("Get users error:", error);
       res.status(500).json({
         success: false,
         message: "Error fetching users",
-        error: error.message
+        error: error.message,
       });
     }
   },
 
   getUserByShortId: async (req, res) => {
     try {
-      const user = await User.findOne({ shortId: req.params.shortId });
+      const user = await User.findOne({shortId: req.params.shortId});
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -36,7 +36,7 @@ const userController = {
 
       return res.status(200).json({
         success: true,
-        data: { user },
+        data: {user},
       });
     } catch (error) {
       return res.status(500).json({
@@ -47,9 +47,10 @@ const userController = {
     }
   },
 
+  // userController.js - updateUserProfile method
   updateUserProfile: async (req, res) => {
     try {
-      const user = await User.findOne({ shortId: req.user.id });
+      const user = await User.findOne({shortId: req.user.id});
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -57,16 +58,28 @@ const userController = {
         });
       }
 
-      const { displayName, bio } = req.body;
-      if (displayName) user.displayName = displayName;
-      if (bio) user.bio = bio;
+      const {username, bio} = req.body;
+
+      // Check if username is being changed and if it's already taken
+      if (username && username !== user.username) {
+        const existingUser = await User.findOne({username});
+        if (existingUser) {
+          return res.status(400).json({
+            success: false,
+            message: "Username is already taken",
+          });
+        }
+        user.username = username;
+      }
+
+      if (bio !== undefined) user.bio = bio;
 
       await user.save();
 
       return res.status(200).json({
         success: true,
         message: "Profile updated successfully",
-        data: { user },
+        data: {user},
       });
     } catch (error) {
       return res.status(500).json({
@@ -79,9 +92,7 @@ const userController = {
 
   changePassword: async (req, res) => {
     try {
-      const user = await User.findOne({ shortId: req.user.id }).select(
-        "+password"
-      );
+      const user = await User.findOne({shortId: req.user.id}).select("+password");
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -89,7 +100,7 @@ const userController = {
         });
       }
 
-      const { currentPassword, newPassword } = req.body;
+      const {currentPassword, newPassword} = req.body;
       const isMatch = await user.comparePassword(currentPassword);
       if (!isMatch) {
         return res.status(400).json({
@@ -105,7 +116,7 @@ const userController = {
       try {
         await sendPasswordChangeConfirmation(user.email, user.username);
       } catch (emailError) {
-        console.error('Password change confirmation email error:', emailError);
+        console.error("Password change confirmation email error:", emailError);
         // Don't fail the request if email fails
       }
 
@@ -124,7 +135,7 @@ const userController = {
 
   deleteUser: async (req, res) => {
     try {
-      const user = await User.findOneAndDelete({ shortId: req.user.id });
+      const user = await User.findOneAndDelete({shortId: req.user.id});
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -147,7 +158,7 @@ const userController = {
 
   getUserPosts: async (req, res) => {
     try {
-      const user = await User.findOne({ shortId: req.params.shortId });
+      const user = await User.findOne({shortId: req.params.shortId});
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -156,24 +167,24 @@ const userController = {
       }
 
       // Use user._id (ObjectId) not user.shortId (string)
-      const posts = await Post.find({ author: user._id })
-        .populate('author', 'shortId username displayName')
-        .sort({ createdAt: -1 });
+      const posts = await Post.find({author: user._id})
+        .populate("author", "shortId username displayName")
+        .sort({createdAt: -1});
 
       return res.status(200).json({
         success: true,
         message: "User posts retrieved successfully",
-        data: { 
+        data: {
           posts,
           count: posts.length,
           user: {
             shortId: user.shortId,
-            username: user.username
-          }
+            username: user.username,
+          },
         },
       });
     } catch (error) {
-      console.error('Get user posts error:', error);
+      console.error("Get user posts error:", error);
       return res.status(500).json({
         success: false,
         message: "Error fetching user's posts",
@@ -184,7 +195,7 @@ const userController = {
 
   getUserComments: async (req, res) => {
     try {
-      const user = await User.findOne({ shortId: req.params.shortId });
+      const user = await User.findOne({shortId: req.params.shortId});
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -193,25 +204,25 @@ const userController = {
       }
 
       // Use user._id (ObjectId) not user.shortId (string)
-      const comments = await Comment.find({ author: user._id })
-        .populate('author', 'shortId username displayName')
-        .populate('post', 'shortId title')
-        .sort({ createdAt: -1 });
+      const comments = await Comment.find({author: user._id})
+        .populate("author", "shortId username displayName")
+        .populate("post", "shortId title")
+        .sort({createdAt: -1});
 
       return res.status(200).json({
         success: true,
         message: "User comments retrieved successfully",
-        data: { 
+        data: {
           comments,
           count: comments.length,
           user: {
             shortId: user.shortId,
-            username: user.username
-          }
+            username: user.username,
+          },
         },
       });
     } catch (error) {
-      console.error('Get user comments error:', error);
+      console.error("Get user comments error:", error);
       return res.status(500).json({
         success: false,
         message: "Error fetching user's comments",
@@ -219,6 +230,5 @@ const userController = {
       });
     }
   },
-
 };
 export default userController;
