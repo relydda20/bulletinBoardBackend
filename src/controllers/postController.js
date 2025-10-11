@@ -68,7 +68,7 @@ const postController = {
   getPostByShortId: async (req, res) => {
     try {
       const {shortId} = req.params;
-      const post = await Post.findOne({shortId}).populate("author", "username email").lean();
+      const post = await Post.findOne({shortId}).populate("author", "username email shortId").lean();
 
       if (!post) {
         return res.status(404).json({
